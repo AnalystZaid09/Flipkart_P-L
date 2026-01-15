@@ -64,7 +64,7 @@ fsn_file = st.sidebar.file_uploader(
 pm_file = st.sidebar.file_uploader(
     "flipkart PM",
     type=["xlsx", "csv"],
-    help="Upload the Product Master file (Excel or CSV)"
+    help="Upload the Purchase Master file (Excel or CSV)"
 )
 
 
@@ -403,6 +403,39 @@ def process_data(payment_file, uni_orders_file, fsn_file, pm_file):
         ignore_index=True
     )
     
+    # Reorder columns to match requested sequence
+    column_order = [
+        "Order Date",
+        "Order item ID",
+        "Order ID",
+        "Seller SKU",
+        "Brand Manager",
+        "Brand",
+        "Product Name",
+        "FSN",
+        "Sum of Quantity",
+        "Sales Amount",
+        "Flipkart Total Fees",
+        "Flipkart Fees In %",
+        "Bank Settlement Value (Rs.) = SUM(J:R)",
+        "Our Cost Purchase",
+        "Our Cost As Per Qty",
+        "Profit",
+        "Profit In Percentage",
+        "Support Amount",
+        "With BackEnd Price",
+        "With Support Purchase As Per Qty",
+        "Profit With Support",
+        "Profit In Percentage With Support",
+        "3% On Turn Over",
+        "After 3% Profit",
+        "After 3%"
+    ]
+    
+    # Only include columns that exist in the dataframe
+    final_columns = [col for col in column_order if col in pivot_df.columns]
+    pivot_df = pivot_df[final_columns]
+    
     return pivot_df, brand_pivot
 
 
@@ -505,5 +538,5 @@ else:
     1. **Payment File Flipkart.xlsx** - Payment file with 'Orders' sheet
     2. **Uni Orders.xlsx** - Unique orders reference file
     3. **FSN.xlsx** - Product FSN master file
-    4. **flipkart PM.xlsx** - Product master with cost and support data
+    4. **flipkart PM.xlsx** - Purchase master with cost and support data
     """)
