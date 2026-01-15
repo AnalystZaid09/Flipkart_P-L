@@ -108,6 +108,48 @@ def get_download_link(df, filename, file_type="excel"):
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='Sheet1', index=False)
+                
+                # Apply color formatting to Excel
+                workbook = writer.book
+                worksheet = writer.sheets['Sheet1']
+                
+                from openpyxl.styles import PatternFill
+                
+                # Define fill colors (darker shades)
+                green_fill = PatternFill(start_color='92D050', end_color='92D050', fill_type='solid')  # Dark green
+                red_fill = PatternFill(start_color='FF6B6B', end_color='FF6B6B', fill_type='solid')  # Dark red
+                
+                # Columns to format
+                profit_columns = [
+                    "Profit",
+                    "Profit In Percentage",
+                    "Profit With Support",
+                    "Profit In Percentage With Support",
+                    "After 3% Profit",
+                    "After 3%"
+                ]
+                
+                # Get column indices
+                header_row = list(df.columns)
+                col_indices = []
+                for col in profit_columns:
+                    if col in header_row:
+                        col_indices.append(header_row.index(col) + 1)  # openpyxl is 1-indexed
+                
+                # Apply colors to cells
+                for row_idx in range(2, len(df) + 2):  # Start from row 2 (after header)
+                    for col_idx in col_indices:
+                        cell = worksheet.cell(row=row_idx, column=col_idx)
+                        try:
+                            val = pd.to_numeric(cell.value, errors='coerce')
+                            if pd.notna(val):
+                                if val < 0:
+                                    cell.fill = red_fill
+                                elif val > 0:
+                                    cell.fill = green_fill
+                        except:
+                            pass
+            
             b64 = base64.b64encode(output.getvalue()).decode()
             mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             return f'<a href="data:{mime};base64,{b64}" download="{filename}" class="download-link">📥 Download {filename}</a>'
@@ -118,6 +160,42 @@ def get_download_link(df, filename, file_type="excel"):
             return f'<a href="data:{mime};base64,{b64}" download="{filename}" class="download-link">📄 Download {filename}</a>'
     except Exception as e:
         return f"Error generating download: {str(e)}"
+
+
+def color_profit_cells(val):
+    """Apply background color to cells based on value: green for positive, red for negative"""
+    try:
+        num_val = pd.to_numeric(val, errors='coerce')
+        if pd.isna(num_val) or val == "" or val == "Grand Total":
+            return ''
+        elif num_val < 0:
+            return 'background-color: #FF6B6B'  # Dark red
+        elif num_val > 0:
+            return 'background-color: #92D050'  # Dark green
+        else:
+            return ''
+    except:
+        return ''
+
+
+def style_dataframe(df):
+    """Apply styling to the dataframe with color-coded profit columns"""
+    # Columns to apply color formatting
+    profit_columns = [
+        "Profit",
+        "Profit In Percentage",
+        "Profit With Support",
+        "Profit In Percentage With Support",
+        "After 3% Profit",
+        "After 3%"
+    ]
+    
+    # Only style columns that exist in the dataframe
+    cols_to_style = [col for col in profit_columns if col in df.columns]
+    
+    if cols_to_style:
+        return df.style.applymap(color_profit_cells, subset=cols_to_style)
+    return df.style
 
 
 def process_data(payment_file, uni_orders_file, fsn_file, pm_file):
@@ -554,8 +632,9 @@ if all([payment_file, uni_orders_file, fsn_file, pm_file]):
             
             with tab1:
                 st.subheader("Detailed P&L Report")
+                styled_df = style_dataframe(pivot_df)
                 st.dataframe(
-                    pivot_df,
+                    styled_df,
                     use_container_width=True,
                     height=500
                 )
